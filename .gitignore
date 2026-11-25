@@ -1,0 +1,23 @@
+# runtime data
+__pycache__/
+*.pyc
+error.log
+gas_log.csv
+*.csv.old
+gas_sensor_app/config.json
+
+# video build intermediates (regenerable via gas_saver_video/build_video.py)
+gas_saver_video/build/
+gas_saver_video/audio/
+
+# large rendered video — published as a GitHub Release asset instead of a git blob
+gas_saver_video/Gas_Saver_3min_English.mp4
+
+# environment
+.venv/
+venv/
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store
