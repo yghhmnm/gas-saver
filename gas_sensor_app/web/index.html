@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gas Saver Pro — Smart Gas Safety Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2226%22 font-size=%2224%22>☣</text></svg>">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #121928;
+      --card-border: #1e2c45;
+      --neon-green: #00ff88;
+      --neon-yellow: #ffd600;
+      --neon-red: #ff3366;
+      --neon-blue: #00e5ff;
+      --text-main: #f0f4fc;
+      --text-muted: #8899b5;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .phone-container {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg);
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 0 1px var(--card-border);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 14px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .shield-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #0055ff, #00e5ff);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; white-space: nowrap; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .icon-btn {
+      width: 30px; height: 30px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .icon-btn:hover { color: var(--text-main); border-color: var(--text-muted); }
+    .icon-btn:focus-visible { outline: 2px solid var(--neon-blue); outline-offset: 2px; }
+
+    .badge-connected {
+      background: rgba(136, 153, 181, 0.1);
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+      white-space: nowrap;
+    }
+    .badge-connected::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+    }
+    .badge-connected[data-mode="live"] {
+      background: rgba(0, 255, 136, 0.12);
+      color: var(--neon-green);
+      border-color: rgba(0, 255, 136, 0.4);
+    }
+    .badge-connected[data-mode="live"]::before { box-shadow: 0 0 8px var(--neon-green); }
+    .badge-connected[data-mode="demo"] {
+      background: rgba(255, 214, 0, 0.1);
+      color: var(--neon-yellow);
+      border-color: rgba(255, 214, 0, 0.35);
+    }
+    .badge-connected[data-mode="demo"]::before { box-shadow: 0 0 8px var(--neon-yellow); }
+
+    .demo-hint {
+      margin: 10px 18px 0;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: rgba(255, 214, 0, 0.07);
+      border: 1px solid rgba(255, 214, 0, 0.25);
+      color: var(--neon-yellow);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .demo-hint[hidden] { display: none; }
+
+    /* Room Selector Tabs */
+    .room-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 18px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      background: #0d1422;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .room-tabs::-webkit-scrollbar { display: none; }
+    .room-tab {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .room-tab.active {
+      background: rgba(0, 229, 255, 0.15);
+      border-color: var(--neon-blue);
+      color: var(--text-main);
+    }
+    .room-tab.offline { opacity: 0.45; }
+    .room-tab:focus-visible { outline: 2px solid var(--neon-blue); outline-offset: 2px; }
+
+    /* Main Gauge Area */
+    .gauge-card {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .gauge-wrapper {
+      position: relative;
+      width: 280px; height: 280px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    svg.gauge-svg {
+      /* Rotated so the 270° arc starts bottom-left and fills clockwise */
+      transform: rotate(135deg);
+      width: 280px; height: 280px;
+    }
+    .gauge-track {
+      fill: none;
+      stroke: #16243d;
+      stroke-width: 14;
+      stroke-linecap: round;
+    }
+    .gauge-progress {
+      fill: none;
+      stroke: var(--neon-green);
+      stroke-width: 14;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), stroke 0.4s ease;
+      filter: drop-shadow(0 0 10px var(--neon-green));
+    }
+    .gauge-inner-content {
+      position: absolute;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .gauge-room-name {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .gauge-value {
+      font-size: 42px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -1px;
+      color: var(--neon-green);
+      transition: color 0.3s;
+    }
+    .gauge-level-badge {
+      margin-top: 6px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      padding: 3px 12px;
+      border-radius: 12px;
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--neon-green);
+    }
+    .gauge-subtext {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Controls Section */
+    .controls-grid {
+      padding: 0 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Valve Control Card */
+    .valve-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .valve-info { display: flex; flex-direction: column; gap: 8px; }
+    .valve-title { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: var(--text-muted); }
+    .valve-state-text { font-size: 16px; font-weight: 800; color: var(--neon-green); }
+    .close-valve-btn {
+      background: linear-gradient(135deg, #ff2255, #cc0033);
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(255, 34, 85, 0.4);
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .close-valve-btn:active { transform: scale(0.96); }
+    .close-valve-btn:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
+    .close-valve-btn:disabled {
+      background: #1e2c45;
+      color: var(--text-muted);
+      box-shadow: none;
+      cursor: default;
+      transform: none;
+    }
+
+    /* Switch Component */
+    .toggle-switch {
+      position: relative;
+      width: 52px; height: 28px;
+      background: #1e2c45;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle-switch.active { background: var(--neon-green); }
+    .toggle-knob {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 22px; height: 22px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .toggle-switch.active .toggle-knob { transform: translateX(24px); }
+    .toggle-switch:focus-visible { outline: 2px solid var(--neon-blue); outline-offset: 2px; }
+
+    /* Dual Switch Row */
+    .switch-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .switch-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 90px;
+    }
+    .switch-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .switch-card-label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+    .switch-card-status { font-size: 12px; font-weight: 800; color: var(--neon-green); }
+
+    /* Live Chart Mini */
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .chart-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+    canvas#liveChart { width: 100%; height: 75px; display: block; }
+
+    /* Danger Flasher */
+    .danger-active { animation: alertPulse 1.2s infinite alternate; }
+    @keyframes alertPulse {
+      0% { box-shadow: 0 0 0 1px var(--card-border); }
+      100% { box-shadow: 0 0 40px rgba(255, 45, 85, 0.8), 0 0 0 2px var(--neon-red); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .danger-active { animation: none; box-shadow: 0 0 30px rgba(255, 51, 102, 0.55), 0 0 0 2px var(--neon-red); }
+      .toggle-knob, .gauge-progress { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-container" id="phoneContainer">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-area">
+        <div class="shield-icon">🛡️</div>
+        <div class="logo-text">Gas Saver</div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="settingsBtn" title="Set sensor hub address" aria-label="Set sensor hub address">⚙</button>
+        <div class="badge-connected" id="connBadge" data-mode="connecting" title="Connecting to sensor hub…">CONNECTING…</div>
+      </div>
+    </div>
+
+    <div class="demo-hint" id="demoHint" hidden>
+      Simulated data — the sensor hub is unreachable. Tap ⚙ to set the hub address (e.g. <b>192.168.1.20:5000</b>).
+    </div>
+
+    <!-- Room Selector Tabs (rendered from the hub / demo list) -->
+    <nav class="room-tabs" id="roomTabs" aria-label="Monitored rooms"></nav>
+
+    <!-- Main Gauge Area -->
+    <div class="gauge-card">
+      <div class="gauge-wrapper">
+        <svg class="gauge-svg" viewBox="0 0 280 280" aria-hidden="true">
+          <circle class="gauge-track" id="gaugeTrack" cx="140" cy="140" r="105"></circle>
+          <circle class="gauge-progress" id="gaugeProgress" cx="140" cy="140" r="105"></circle>
+        </svg>
+        <div class="gauge-inner-content">
+          <div class="gauge-room-name" id="roomTitle">KITCHEN</div>
+          <div class="gauge-value" id="gasValueDisplay">12%</div>
+          <div class="gauge-level-badge" id="gasLevelBadge">SAFE</div>
+          <div class="gauge-subtext">Real-time Level</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-grid">
+      <!-- Valve Control -->
+      <div class="valve-card">
+        <div class="valve-info">
+          <div class="valve-title">GAS VALVE CONTROL</div>
+          <div class="valve-state-text" id="valveText">VALVE: OPEN</div>
+          <button class="toggle-switch active" id="valveToggle" role="switch" aria-checked="true" aria-label="Gas valve">
+            <span class="toggle-knob"></span>
+          </button>
+        </div>
+        <button class="close-valve-btn" id="closeValveBtn">CLOSE VALVE<br>NOW ⚡</button>
+      </div>
+
+      <!-- Dual Switches: Fan + Auto Shutoff -->
+      <div class="switch-row">
+        <div class="switch-card">
+          <div class="switch-card-top">
+            <span class="switch-card-label">Exhaust Fan</span>
+            <span class="switch-card-status" id="fanStatus">OFF</span>
+          </div>
+          <button class="toggle-switch" id="fanToggle" role="switch" aria-checked="false" aria-label="Exhaust fan">
+            <span class="toggle-knob"></span>
+          </button>
+        </div>
+
+        <div class="switch-card">
+          <div class="switch-card-top">
+            <span class="switch-card-label">Auto-Shutoff</span>
+            <span class="switch-card-status" id="autoStatus">ACTIVE</span>
+          </div>
+          <button class="toggle-switch active" id="autoToggle" role="switch" aria-checked="true" aria-label="Automatic valve shutoff">
+            <span class="toggle-knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real-time Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <span>GAS TREND (LAST 60s)</span>
+          <span id="peakDisplay">PEAK: 12%</span>
+        </div>
+        <canvas id="liveChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    const HISTORY_LEN = 60;
+    const PALETTE = { green: '#00ff88', yellow: '#ffd600', red: '#ff3366', blue: '#00e5ff', grey: '#8899b5' };
+    const DEMO_ROOMS = [
+      { id: 0, name: 'Kitchen', icon: '🍳', sensor: 'MQ-2', base: 14 },
+      { id: 1, name: 'Living Room', icon: '🛋️', sensor: 'MQ-135', base: 10 },
+      { id: 2, name: 'Master Bed', icon: '🛏️', sensor: 'MQ-7', base: 8 },
+      { id: 3, name: 'Garage', icon: '🚗', sensor: 'MQ-9', base: 22 },
+      { id: 4, name: 'Boiler Room', icon: '🔥', sensor: 'MQ-2', base: 28 },
+      { id: 5, name: 'Basement', icon: '📦', sensor: 'MQ-4', base: 12 }
+    ];
+
+    const el = {
+      badge: document.getElementById('connBadge'),
+      hint: document.getElementById('demoHint'),
+      settings: document.getElementById('settingsBtn'),
+      tabs: document.getElementById('roomTabs'),
+      container: document.getElementById('phoneContainer'),
+      roomTitle: document.getElementById('roomTitle'),
+      value: document.getElementById('gasValueDisplay'),
+      levelBadge: document.getElementById('gasLevelBadge'),
+      track: document.getElementById('gaugeTrack'),
+      progress: document.getElementById('gaugeProgress'),
+      valveText: document.getElementById('valveText'),
+      valveToggle: document.getElementById('valveToggle'),
+      closeValve: document.getElementById('closeValveBtn'),
+      fanToggle: document.getElementById('fanToggle'),
+      fanStatus: document.getElementById('fanStatus'),
+      autoToggle: document.getElementById('autoToggle'),
+      autoStatus: document.getElementById('autoStatus'),
+      canvas: document.getElementById('liveChart'),
+      peak: document.getElementById('peakDisplay')
+    };
+    const ctx = el.canvas.getContext('2d');
+
+    // ── Hub address ────────────────────────────────────────────────────────────
+    function normalizeHub(value) {
+      value = (value || '').trim();
+      if (!value) return '';
+      if (!/^https?:\/\//i.test(value)) value = 'http://' + value;
+      return value.replace(/\/+$/, '');
+    }
+    function loadHub() {
+      try { return normalizeHub(localStorage.getItem('gasSaverHub')); } catch { return ''; }
+    }
+    function saveHub(value) {
+      try { localStorage.setItem('gasSaverHub', value); } catch { /* private mode */ }
+    }
+    const queryHub = new URLSearchParams(location.search).get('hub');
+    let hubUrl = queryHub ? normalizeHub(queryHub) : loadHub();
+    if (queryHub) saveHub(hubUrl);
+
+    function hubBase() {
+      if (hubUrl) return hubUrl;
+      const host = location.hostname || 'localhost';
+      return 'http://' + host + ':5000';
+    }
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    let mode = 'connecting';          // connecting | live | demo
+    let rooms = DEMO_ROOMS.map(r => ({ ...r, val: r.base, valve: true, auto_shut: true, online: true }));
+    let thresholds = { warn: 40, danger: 70 };
+    let currentRoomId = 0;
+    let fanOn = false;
+    const histories = new Map();
+    const lastLevels = new Map();
+    let roomsSig = '';
+    let liveFailures = 0;
+    let pollTimer = null;
+
+    // ── Gauge geometry ─────────────────────────────────────────────────────────
+    const GAUGE_R = 105;
+    const CIRC = 2 * Math.PI * GAUGE_R;
+    const ARC_FRACTION = 0.75;        // 270° sweep
+    el.track.style.strokeDasharray = `${CIRC * ARC_FRACTION} ${CIRC}`;
+    el.progress.style.strokeDasharray = `${CIRC * ARC_FRACTION} ${CIRC}`;
+    el.progress.style.strokeDashoffset = `${CIRC * ARC_FRACTION}`;
+
+    // ── Audio (created only after a user gesture, per browser policy) ──────────
+    let audioCtx = null;
+    let lastBeepAt = 0;
+    function unlockAudio() {
+      if (audioCtx) return;
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch { audioCtx = null; }
+    }
+    document.addEventListener('pointerdown', unlockAudio, { capture: true });
+    document.addEventListener('keydown', unlockAudio, { capture: true });
+
+    function beep() {
+      if (!audioCtx) return;
+      const now = performance.now();
+      if (now - lastBeepAt < 3000) return;
+      lastBeepAt = now;
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      } catch { /* audio not available */ }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const currentRoom = () => rooms.find(r => r.id === currentRoomId) || rooms[0];
+    const levelOf = (room) => {
+      if (!room.online) return 'OFFLINE';
+      if (room.val >= thresholds.danger) return 'DANGER';
+      if (room.val >= thresholds.warn) return 'WARNING';
+      return 'SAFE';
+    };
+    const colorOf = (level) => level === 'DANGER' ? PALETTE.red
+      : level === 'WARNING' ? PALETTE.yellow
+      : level === 'OFFLINE' ? PALETTE.grey : PALETTE.green;
+
+    function setMode(next) {
+      mode = next;
+      el.badge.dataset.mode = next;
+      el.badge.textContent = next === 'live' ? 'LIVE'
+        : next === 'demo' ? 'DEMO' : 'CONNECTING…';
+      el.badge.title = next === 'live'
+        ? 'Live data from ' + hubBase()
+        : next === 'demo'
+          ? 'Hub unreachable at ' + hubBase() + ' — showing simulated data'
+          : 'Connecting to ' + hubBase();
+      el.hint.hidden = next !== 'demo';
+    }
+
+    function pushHistory(id, value) {
+      let h = histories.get(id);
+      if (!h) {
+        h = new Array(HISTORY_LEN).fill(value);
+        histories.set(id, h);
+      }
+      h.shift();
+      h.push(value);
+    }
+
+    // ── Rendering ──────────────────────────────────────────────────────────────
+    function renderTabs() {
+      el.tabs.replaceChildren();
+      for (const room of rooms) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'room-tab'
+          + (room.id === currentRoomId ? ' active' : '')
+          + (room.online ? '' : ' offline');
+        btn.dataset.roomId = String(room.id);
+        btn.textContent = `${room.icon} ${room.name}`;
+        btn.addEventListener('click', () => selectRoom(room.id));
+        el.tabs.appendChild(btn);
+      }
+    }
+
+    function selectRoom(id) {
+      currentRoomId = id;
+      for (const tab of el.tabs.children) {
+        tab.classList.toggle('active', Number(tab.dataset.roomId) === id);
+      }
+      render();
+    }
+
+    function render() {
+      const room = currentRoom();
+      if (!room) return;
+      const level = levelOf(room);
+      const color = colorOf(level);
+      const pct = Math.round(room.val);
+
+      el.roomTitle.textContent = `${room.name.toUpperCase()} · ${room.sensor}`;
+
+      if (room.online) {
+        el.value.textContent = `${pct}%`;
+        el.progress.style.strokeDashoffset = `${CIRC * ARC_FRACTION * (1 - clamp(pct, 0, 100) / 100)}`;
+        el.levelBadge.textContent = level;
+      } else {
+        el.value.textContent = '--';
+        el.progress.style.strokeDashoffset = `${CIRC * ARC_FRACTION}`;
+        el.levelBadge.textContent = 'OFFLINE';
+      }
+      el.progress.style.stroke = color;
+      el.progress.style.filter = `drop-shadow(0 0 10px ${color})`;
+      el.value.style.color = color;
+      el.levelBadge.style.color = color;
+      el.levelBadge.style.background = `${color}25`;
+
+      el.valveToggle.classList.toggle('active', room.valve);
+      el.valveToggle.setAttribute('aria-checked', String(room.valve));
+      el.valveText.textContent = room.valve ? 'VALVE: OPEN' : 'VALVE: CLOSED';
+      el.valveText.style.color = room.valve ? PALETTE.green : PALETTE.red;
+      el.closeValve.disabled = !room.valve;
+
+      el.autoToggle.classList.toggle('active', room.auto_shut);
+      el.autoToggle.setAttribute('aria-checked', String(room.auto_shut));
+      el.autoStatus.textContent = room.auto_shut ? 'ACTIVE' : 'DISABLED';
+      el.autoStatus.style.color = room.auto_shut ? PALETTE.green : PALETTE.grey;
+
+      el.fanToggle.classList.toggle('active', fanOn);
+      el.fanToggle.setAttribute('aria-checked', String(fanOn));
+      el.fanStatus.textContent = fanOn ? 'ON' : 'OFF';
+      el.fanStatus.style.color = fanOn ? PALETTE.blue : PALETTE.grey;
+
+      drawChart(room);
+    }
+
+    function evaluateAlerts() {
+      let anyDanger = false;
+      for (const room of rooms) {
+        const level = levelOf(room);
+        if (level === 'DANGER' && lastLevels.get(room.id) !== 'DANGER' && room.online) beep();
+        lastLevels.set(room.id, level);
+        if (level === 'DANGER') anyDanger = true;
+      }
+      el.container.classList.toggle('danger-active', anyDanger);
+    }
+
+    // ── Canvas chart ───────────────────────────────────────────────────────────
+    function sizeCanvas() {
+      const rect = el.canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      el.canvas.width = Math.max(1, Math.round(rect.width * scale));
+      el.canvas.height = Math.max(1, Math.round(rect.height * scale));
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      render();
+    }
+    if (window.ResizeObserver) new ResizeObserver(sizeCanvas).observe(el.canvas);
+    else window.addEventListener('resize', sizeCanvas);
+
+    function drawChart(room) {
+      const rect = el.canvas.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      if (W < 10 || H < 10) return;
+      const hist = histories.get(room.id) || [];
+      ctx.clearRect(0, 0, W, H);
+
+      // Threshold guides
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 1;
+      for (const t of [thresholds.warn, thresholds.danger]) {
+        const y = H - (t / 100) * H;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+
+      // Area fill
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, 'rgba(0,229,255,0.28)');
+      grad.addColorStop(1, 'rgba(0,229,255,0.02)');
+      const step = W / Math.max(1, HISTORY_LEN - 1);
+      ctx.beginPath();
+      hist.forEach((v, i) => {
+        const x = i * step;
+        const y = H - (clamp(v, 0, 100) / 100) * H;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      const lineColor = colorOf(levelOf(room));
+      if (hist.length > 1) {
+        ctx.lineTo(W, H);
+        ctx.lineTo(0, H);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Stroke line
+        ctx.beginPath();
+        hist.forEach((v, i) => {
+          const x = i * step;
+          const y = H - (clamp(v, 0, 100) / 100) * H;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = lineColor;
+        ctx.shadowBlur = 6;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Latest point
+        const lastX = (hist.length - 1) * step;
+        const lastY = H - (clamp(hist[hist.length - 1], 0, 100) / 100) * H;
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+      }
+
+      el.peak.textContent = hist.length ? `PEAK: ${Math.round(Math.max(...hist))}%` : 'PEAK: --';
+    }
+
+    // ── Controls ───────────────────────────────────────────────────────────────
+    async function postCommand(path, payload) {
+      if (mode !== 'live') return false;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1500);
+      try {
+        const res = await fetch(hubBase() + path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: ctrl.signal
+        });
+        return res.ok;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function setValve(room, open) {
+      room.valve = open;
+      render();
+      postCommand('/api/valve', { room_id: room.id, open });
+    }
+
+    el.valveToggle.addEventListener('click', () => {
+      const room = currentRoom();
+      setValve(room, !room.valve);
+    });
+    el.closeValve.addEventListener('click', () => {
+      const room = currentRoom();
+      setValve(room, false);
+    });
+
+    el.fanToggle.addEventListener('click', () => {
+      fanOn = !fanOn;
+      render();
+      postCommand('/api/fan', { on: fanOn });
+    });
+
+    el.autoToggle.addEventListener('click', () => {
+      const room = currentRoom();
+      room.auto_shut = !room.auto_shut;
+      render();
+      postCommand('/api/auto', { room_id: room.id, on: room.auto_shut });
+    });
+
+    el.settings.addEventListener('click', () => {
+      const answer = window.prompt(
+        'Sensor hub address (host:port or full URL).\nLeave empty to auto-detect on this host.',
+        hubUrl || hubBase()
+      );
+      if (answer === null) return;
+      hubUrl = normalizeHub(answer);
+      saveHub(hubUrl);
+      liveFailures = 0;
+      setMode('connecting');
+      schedulePoll(0);
+    });
+
+    // ── Hub polling / demo simulation ─────────────────────────────────────────
+    function applyHubState(data) {
+      thresholds.warn = Number(data.warn) || 40;
+      thresholds.danger = Number(data.danger) || 70;
+      fanOn = !!data.fan;
+
+      const incoming = (Array.isArray(data.rooms) ? data.rooms : []).map(r => ({
+        id: Number(r.id),
+        name: String(r.name ?? 'Room'),
+        icon: String(r.icon ?? '📡'),
+        sensor: String(r.sensor ?? ''),
+        valve: !!r.valve,
+        auto_shut: !!r.auto_shut,
+        online: !!r.online,
+        val: clamp(Number(r.pct) || 0, 0, 100)
+      }));
+      if (!incoming.length) throw new Error('hub returned no rooms');
+
+      const sig = incoming.map(r => [r.id, r.name, r.icon, r.sensor, r.online].join(':')).join('|');
+      rooms = incoming;
+      if (!rooms.some(r => r.id === currentRoomId)) currentRoomId = rooms[0].id;
+      if (sig !== roomsSig) {
+        roomsSig = sig;
+        renderTabs();
+      }
+      for (const room of rooms) if (room.online) pushHistory(room.id, room.val);
+    }
+
+    function enterDemo() {
+      rooms = DEMO_ROOMS.map(r => ({ ...r, val: r.base, valve: true, auto_shut: true, online: true }));
+      thresholds = { warn: 40, danger: 70 };
+      fanOn = false;
+      histories.clear();
+      lastLevels.clear();
+      roomsSig = '';
+      if (!rooms.some(r => r.id === currentRoomId)) currentRoomId = rooms[0].id;
+      setMode('demo');
+      renderTabs();
+    }
+
+    function demoStep() {
+      for (const room of rooms) {
+        const spike = Math.random() < 0.035;
+        if (spike) {
+          room.val = 72 + Math.random() * 23;
+        } else {
+          room.base = clamp(room.base + (Math.random() * 4 - 2), 5, 60);
+          room.val = clamp(room.base + (Math.random() * 2 - 1), 3, 100);
+        }
+        pushHistory(room.id, room.val);
+
+        if (room.val >= thresholds.danger) {
+          if (room.auto_shut && room.valve) room.valve = false;
+          fanOn = true;
+        }
+      }
+      if (!rooms.some(r => r.val >= thresholds.danger)) fanOn = false;
+    }
+
+    function schedulePoll(ms) {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(poll, ms);
+    }
+
+    async function poll() {
+      let live = false;
+
+      if (!document.hidden) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 1500);
+        try {
+          const res = await fetch(hubBase() + '/api/state', { signal: ctrl.signal, cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          applyHubState(data);          // throws if the payload isn't a valid hub state
+          liveFailures = 0;
+          live = true;
+          if (mode !== 'live') setMode('live');
+        } catch {
+          /* hub unreachable — handled below */
+        } finally {
+          clearTimeout(timer);
+        }
+      } else {
+        live = mode === 'live';
+      }
+
+      if (!live) {
+        liveFailures++;
+        if (mode !== 'demo' && liveFailures >= 2) enterDemo();
+        if (mode === 'demo') demoStep();
+      }
+
+      render();
+      evaluateAlerts();
+      schedulePoll(1000);
+    }
+
+    // ── Boot ───────────────────────────────────────────────────────────────────
+    renderTabs();
+    render();
+    setMode('connecting');
+    sizeCanvas();
+    poll();
+  })();
+  </script>
+</body>
+</html>
